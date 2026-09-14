@@ -114,10 +114,10 @@ y = df["charges"]
 X = sm.add_constant(X)
 
 # Fit OLS model
-model = sm.OLS(
-    y,
-    X
-).fit()
+model = sm.OLS(y, X).fit()
+
+# HC3 robust model
+robust_model = model.get_robustcov_results(cov_type="HC3")
 
 
 # ============================================================
