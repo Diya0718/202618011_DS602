@@ -1002,10 +1002,12 @@ with tab2:
 with tab3:
 
     st.header("📈 Live Prediction & Diagnostics")
+
     st.write(
         "Enter patient information below to predict medical insurance "
         "charges and examine the regression model diagnostics."
     )
+
 
     # ========================================================
     # SECTION 1: LIVE PREDICTION
@@ -1013,9 +1015,20 @@ with tab3:
 
     st.subheader("🔮 Live Medical Charge Prediction")
 
+
+    # --------------------------------------------------------
+    # PATIENT INPUTS
+    # --------------------------------------------------------
+
     col1, col2, col3 = st.columns(3)
 
+
+    # --------------------------------------------------------
+    # Column 1
+    # --------------------------------------------------------
+
     with col1:
+
         pred_age = st.slider(
             "Age",
             min_value=int(df["age"].min()),
@@ -1023,10 +1036,12 @@ with tab3:
             value=30
         )
 
+
         pred_sex = st.selectbox(
             "Sex",
             sorted(df["sex"].unique())
         )
+
 
         pred_children = st.slider(
             "Number of children",
@@ -1035,7 +1050,13 @@ with tab3:
             value=0
         )
 
+
+    # --------------------------------------------------------
+    # Column 2
+    # --------------------------------------------------------
+
     with col2:
+
         pred_weight = st.number_input(
             "Weight (kg)",
             min_value=20.0,
@@ -1043,6 +1064,7 @@ with tab3:
             value=65.0,
             step=1.0
         )
+
 
         pred_height = st.number_input(
             "Height (cm)",
@@ -1052,25 +1074,36 @@ with tab3:
             step=1.0
         )
 
+
         # Calculate BMI
         height_m = pred_height / 100
+
         pred_bmi = pred_weight / (height_m ** 2)
+
 
         st.metric(
             "Calculated BMI",
             f"{pred_bmi:.2f}"
         )
 
+
+    # --------------------------------------------------------
+    # Column 3
+    # --------------------------------------------------------
+
     with col3:
+
         pred_smoker = st.selectbox(
             "Smoker",
             sorted(df["smoker"].unique())
         )
 
+
         pred_region = st.selectbox(
             "Region",
             sorted(df["region"].unique())
         )
+
 
     # ========================================================
     # CREATE INPUT DATA FOR MODEL
@@ -1085,46 +1118,97 @@ with tab3:
         "region": [pred_region]
     })
 
+
+    # --------------------------------------------------------
     # Convert categorical variables into dummy variables
+    # --------------------------------------------------------
+
     input_data = pd.get_dummies(
         input_data,
+        columns=[
+            "sex",
+            "smoker",
+            "region"
+        ],
         drop_first=True
     )
 
-    # Make sure input columns match the training model
+
+    # --------------------------------------------------------
+    # Make input columns match training columns
+    # --------------------------------------------------------
+
     feature_columns = X.columns.drop("const")
+
 
     input_data = input_data.reindex(
         columns=feature_columns,
         fill_value=0
     )
 
-    # Add constant
+
+    # --------------------------------------------------------
+    # Ensure same data type as training data
+    # --------------------------------------------------------
+
+    input_data = input_data.astype(int)
+
+
+    # --------------------------------------------------------
+    # Add intercept
+    # --------------------------------------------------------
+
     input_data = sm.add_constant(
         input_data,
         has_constant="add"
     )
 
+
+    # --------------------------------------------------------
     # Ensure exact same column order as training data
+    # --------------------------------------------------------
+
     input_data = input_data[X.columns]
+
 
     # ========================================================
     # PREDICTION
     # ========================================================
 
-    prediction_result = model.get_prediction(input_data)
+    prediction_result = model.get_prediction(
+        input_data
+    )
+
 
     prediction_summary = prediction_result.summary_frame(
         alpha=0.05
     )
 
-    predicted_charge = prediction_summary["mean"].iloc[0]
 
-    confidence_lower = prediction_summary["mean_ci_lower"].iloc[0]
-    confidence_upper = prediction_summary["mean_ci_upper"].iloc[0]
+    predicted_charge = (
+        prediction_summary["mean"].iloc[0]
+    )
 
-    prediction_lower = prediction_summary["obs_ci_lower"].iloc[0]
-    prediction_upper = prediction_summary["obs_ci_upper"].iloc[0]
+
+    confidence_lower = (
+        prediction_summary["mean_ci_lower"].iloc[0]
+    )
+
+
+    confidence_upper = (
+        prediction_summary["mean_ci_upper"].iloc[0]
+    )
+
+
+    prediction_lower = (
+        prediction_summary["obs_ci_lower"].iloc[0]
+    )
+
+
+    prediction_upper = (
+        prediction_summary["obs_ci_upper"].iloc[0]
+    )
+
 
     # ========================================================
     # DISPLAY PREDICTION
@@ -1134,14 +1218,22 @@ with tab3:
 
     st.subheader("💰 Predicted Insurance Charge")
 
+
     st.metric(
         "Predicted Medical Charge",
         f"${predicted_charge:,.2f}"
     )
 
+
     col1, col2 = st.columns(2)
 
+
+    # --------------------------------------------------------
+    # Confidence Interval
+    # --------------------------------------------------------
+
     with col1:
+
         st.info(
             f"""
             **95% Confidence Interval**
@@ -1149,21 +1241,29 @@ with tab3:
             ${confidence_lower:,.2f} to ${confidence_upper:,.2f}
 
             This interval estimates the uncertainty around the
-            **mean predicted charge** for patients with these characteristics.
+            **mean predicted charge** for patients with these
+            characteristics.
             """
         )
 
+
+    # --------------------------------------------------------
+    # Prediction Interval
+    # --------------------------------------------------------
+
     with col2:
+
         st.warning(
             f"""
             **95% Prediction Interval**
 
             ${prediction_lower:,.2f} to ${prediction_upper:,.2f}
 
-            This wider interval represents the expected range for an
-            **individual patient's actual charge**.
+            This wider interval represents the expected range
+            for an **individual patient's actual charge**.
             """
         )
+
 
     # ========================================================
     # PATIENT INPUT SUMMARY
@@ -1172,6 +1272,7 @@ with tab3:
     with st.expander("📋 View Patient Input"):
 
         patient_summary = pd.DataFrame({
+
             "Variable": [
                 "Age",
                 "Sex",
@@ -1182,6 +1283,7 @@ with tab3:
                 "Smoker",
                 "Region"
             ],
+
             "Value": [
                 pred_age,
                 pred_sex,
@@ -1194,11 +1296,13 @@ with tab3:
             ]
         })
 
+
         st.dataframe(
             patient_summary,
             use_container_width=True,
             hide_index=True
         )
+
 
     # ========================================================
     # SECTION 2: RESIDUAL DIAGNOSTICS
@@ -1208,16 +1312,25 @@ with tab3:
 
     st.subheader("🧪 Regression Diagnostics")
 
+
     residuals = model.resid
+
     fitted_values = model.fittedvalues
 
-    # --------------------------------------------------------
-    # Residuals vs Fitted
-    # --------------------------------------------------------
 
-    st.markdown("### 1. Residuals vs Fitted Values")
+    # ========================================================
+    # 1. RESIDUALS VS FITTED
+    # ========================================================
 
-    fig, ax = plt.subplots(figsize=(8, 5))
+    st.markdown(
+        "### 1. Residuals vs Fitted Values"
+    )
+
+
+    fig, ax = plt.subplots(
+        figsize=(8, 5)
+    )
+
 
     sns.scatterplot(
         x=fitted_values,
@@ -1226,32 +1339,51 @@ with tab3:
         ax=ax
     )
 
+
     ax.axhline(
         0,
         linestyle="--"
     )
 
-    ax.set_xlabel("Fitted Values")
-    ax.set_ylabel("Residuals")
-    ax.set_title("Residuals vs Fitted Values")
+
+    ax.set_xlabel(
+        "Fitted Values"
+    )
+
+    ax.set_ylabel(
+        "Residuals"
+    )
+
+    ax.set_title(
+        "Residuals vs Fitted Values"
+    )
+
 
     st.pyplot(fig)
 
     plt.close(fig)
 
+
     st.write(
-        "A random scatter around zero supports the linearity and "
-        "constant-variance assumptions. A visible pattern or funnel "
-        "shape may indicate model problems."
+        "A random scatter around zero supports the linearity "
+        "and constant-variance assumptions. A visible pattern "
+        "or funnel shape may indicate model problems."
     )
 
-    # --------------------------------------------------------
-    # Q-Q Plot
-    # --------------------------------------------------------
 
-    st.markdown("### 2. Q-Q Plot")
+    # ========================================================
+    # 2. Q-Q PLOT
+    # ========================================================
 
-    fig, ax = plt.subplots(figsize=(7, 5))
+    st.markdown(
+        "### 2. Q-Q Plot"
+    )
+
+
+    fig, ax = plt.subplots(
+        figsize=(7, 5)
+    )
+
 
     sm.qqplot(
         residuals,
@@ -1259,138 +1391,194 @@ with tab3:
         ax=ax
     )
 
-    ax.set_title("Normal Q-Q Plot of Residuals")
+
+    ax.set_title(
+        "Normal Q-Q Plot of Residuals"
+    )
+
 
     st.pyplot(fig)
 
     plt.close(fig)
 
+
     st.write(
-        "Points approximately following the diagonal line indicate "
-        "that the residuals are reasonably close to normally distributed."
+        "Points approximately following the diagonal line "
+        "indicate that the residuals are reasonably close "
+        "to normally distributed."
     )
 
+
     # ========================================================
-    # JARQUE-BERA TEST
+    # 3. JARQUE-BERA TEST
     # ========================================================
 
-    st.markdown("### 3. Jarque–Bera Normality Test")
-
-    jb_stat, jb_pvalue, skewness, kurtosis = sm.stats.jarque_bera(
-        residuals
+    st.markdown(
+        "### 3. Jarque–Bera Normality Test"
     )
+
+
+    jb_stat, jb_pvalue, skewness, kurtosis = (
+        sm.stats.jarque_bera(residuals)
+    )
+
 
     col1, col2, col3, col4 = st.columns(4)
 
+
     with col1:
+
         st.metric(
             "JB Statistic",
             f"{jb_stat:.4f}"
         )
 
+
     with col2:
+
         st.metric(
             "p-value",
             f"{jb_pvalue:.4e}"
         )
 
+
     with col3:
+
         st.metric(
             "Skewness",
             f"{skewness:.4f}"
         )
 
+
     with col4:
+
         st.metric(
             "Kurtosis",
             f"{kurtosis:.4f}"
         )
 
+
     if jb_pvalue < 0.05:
+
         st.warning(
-            "Reject H₀: the residuals are not normally distributed "
-            "at the 5% significance level."
+            "Reject H₀: the residuals are not normally "
+            "distributed at the 5% significance level."
         )
+
     else:
+
         st.success(
-            "Fail to reject H₀: there is insufficient evidence "
-            "that the residuals are non-normal."
+            "Fail to reject H₀: there is insufficient "
+            "evidence that the residuals are non-normal."
         )
 
+
     # ========================================================
-    # BREUSCH-PAGAN TEST
+    # 4. BREUSCH-PAGAN TEST
     # ========================================================
 
-    st.markdown("### 4. Breusch–Pagan Test for Heteroscedasticity")
+    st.markdown(
+        "### 4. Breusch–Pagan Test for Heteroscedasticity"
+    )
+
 
     bp_test = het_breuschpagan(
         residuals,
         model.model.exog
     )
 
+
     bp_lm_stat = bp_test[0]
+
     bp_lm_pvalue = bp_test[1]
+
     bp_f_stat = bp_test[2]
+
     bp_f_pvalue = bp_test[3]
+
 
     col1, col2, col3, col4 = st.columns(4)
 
+
     with col1:
+
         st.metric(
             "LM Statistic",
             f"{bp_lm_stat:.4f}"
         )
 
+
     with col2:
+
         st.metric(
             "LM p-value",
             f"{bp_lm_pvalue:.4e}"
         )
 
+
     with col3:
+
         st.metric(
             "F Statistic",
             f"{bp_f_stat:.4f}"
         )
 
+
     with col4:
+
         st.metric(
             "F p-value",
             f"{bp_f_pvalue:.4e}"
         )
 
+
     if bp_lm_pvalue < 0.05:
+
         st.warning(
-            "Reject H₀: significant heteroscedasticity is detected. "
-            "The residual variance is not constant."
+            "Reject H₀: significant heteroscedasticity is "
+            "detected. The residual variance is not constant."
         )
+
     else:
+
         st.success(
-            "Fail to reject H₀: there is insufficient evidence "
-            "of heteroscedasticity."
+            "Fail to reject H₀: there is insufficient "
+            "evidence of heteroscedasticity."
         )
 
+
     # ========================================================
-    # VIF
+    # 5. VARIANCE INFLATION FACTOR
     # ========================================================
 
-    st.markdown("### 5. Variance Inflation Factor (VIF)")
+    st.markdown(
+        "### 5. Variance Inflation Factor (VIF)"
+    )
+
 
     X_vif = X.drop(
         columns=["const"]
     )
 
+
     vif_data = pd.DataFrame()
+
 
     vif_data["Feature"] = X_vif.columns
 
+
     vif_data["VIF"] = [
+
         variance_inflation_factor(
             X_vif.values,
             i
         )
-        for i in range(X_vif.shape[1])
+
+        for i in range(
+            X_vif.shape[1]
+        )
     ]
+
 
     st.dataframe(
         vif_data,
@@ -1398,10 +1586,13 @@ with tab3:
         hide_index=True
     )
 
+
     st.write(
-        "VIF values close to 1 indicate little multicollinearity. "
-        "Higher values indicate stronger correlation among predictors."
+        "VIF values close to 1 indicate little "
+        "multicollinearity. Higher values indicate "
+        "stronger correlation among predictors."
     )
+
 
     # ========================================================
     # SECTION 3: MODEL PERFORMANCE
@@ -1409,137 +1600,202 @@ with tab3:
 
     st.divider()
 
-    st.subheader("📊 Multiple Linear Regression Results")
+    st.subheader(
+        "📊 Multiple Linear Regression Results"
+    )
 
-    # --------------------------------------------------------
-    # Model metrics
-    # --------------------------------------------------------
+
+    # ========================================================
+    # MODEL METRICS
+    # ========================================================
 
     col1, col2, col3, col4 = st.columns(4)
 
+
     with col1:
+
         st.metric(
             "R²",
             f"{model.rsquared:.3f}"
         )
 
+
     with col2:
+
         st.metric(
             "Adjusted R²",
             f"{model.rsquared_adj:.3f}"
         )
 
+
     with col3:
+
         st.metric(
             "F-statistic",
             f"{model.fvalue:.2f}"
         )
 
+
     with col4:
+
         st.metric(
             "Observations",
             f"{int(model.nobs)}"
         )
 
-    # --------------------------------------------------------
-    # Overall model significance
-    # --------------------------------------------------------
+
+    # ========================================================
+    # OVERALL MODEL SIGNIFICANCE
+    # ========================================================
 
     if model.f_pvalue < 0.05:
+
         st.success(
             f"Overall model is statistically significant "
             f"(F-test p-value = {model.f_pvalue:.4e})."
         )
+
     else:
+
         st.warning(
             f"Overall model is not statistically significant "
             f"(F-test p-value = {model.f_pvalue:.4e})."
         )
 
+
     # ========================================================
-    # COEFFICIENT TABLE
+    # OLS COEFFICIENT TABLE
     # ========================================================
 
-    st.markdown("### Coefficient Estimates")
+    st.markdown(
+        "### OLS Coefficient Estimates"
+    )
 
-    coefficient_table = pd.DataFrame({
+
+    ols_table = pd.DataFrame({
+
         "Coefficient": model.params,
+
         "Std Error": model.bse,
+
         "t-statistic": model.tvalues,
+
         "P-value": model.pvalues,
+
         "CI Lower": model.conf_int()[0],
+
         "CI Upper": model.conf_int()[1]
     })
 
-    coefficient_table = coefficient_table.round(4)
 
     st.dataframe(
-        coefficient_table,
+        ols_table.style.format({
+
+            "Coefficient": "{:.2f}",
+
+            "Std Error": "{:.2f}",
+
+            "t-statistic": "{:.2f}",
+
+            "P-value": "{:.4e}",
+
+            "CI Lower": "{:.2f}",
+
+            "CI Upper": "{:.2f}"
+
+        }),
         use_container_width=True
     )
+
+
+    # ========================================================
+    # HC3 ROBUST RESULTS
+    # ========================================================
+
+    st.markdown(
+        "### HC3 Robust Standard Errors"
+    )
+
+
+    st.write(
+        "The Breusch–Pagan test indicates heteroscedasticity. "
+        "Therefore, HC3 robust standard errors are used for "
+        "more reliable statistical inference."
+    )
+
+
+    # Get confidence intervals from HC3 model
+    robust_ci = robust_model.conf_int()
+
+
+    robust_table = pd.DataFrame({
+
+        "Coefficient": robust_model.params,
+
+        "Std Error (HC3)": robust_model.bse,
+
+        "t-statistic": robust_model.tvalues,
+
+        "P-value": robust_model.pvalues,
+
+        "CI Lower": robust_ci[:, 0],
+
+        "CI Upper": robust_ci[:, 1]
+
+    }, index=X.columns)
+
+
+    st.dataframe(
+
+        robust_table.style.format({
+
+            "Coefficient": "{:.2f}",
+
+            "Std Error (HC3)": "{:.2f}",
+
+            "t-statistic": "{:.2f}",
+
+            "P-value": "{:.4e}",
+
+            "CI Lower": "{:.2f}",
+
+            "CI Upper": "{:.2f}"
+
+        }),
+
+        use_container_width=True
+    )
+
 
     # ========================================================
     # KEY FINDINGS
     # ========================================================
 
-    st.markdown("### 🔍 Key Findings")
+    st.markdown(
+        "### 🔍 Key Findings"
+    )
+
 
     st.write(
         f"""
         - The regression model explains approximately
-          **{model.rsquared * 100:.1f}%** of the variation in medical charges.
-        - The adjusted R² is **{model.rsquared_adj * 100:.1f}%**.
-        - The overall regression model is statistically significant.
-        - The coefficient estimates show the expected change in medical
-          charges for a one-unit increase in a predictor while holding
-          the other predictors constant.
+          **{model.rsquared * 100:.1f}%** of the variation
+          in medical charges.
+
+        - The adjusted R² is
+          **{model.rsquared_adj * 100:.1f}%**.
+
+        - The overall regression model is statistically
+          significant.
+
+        - The coefficient estimates represent the expected
+          change in medical charges for a one-unit increase
+          in a predictor while holding the other predictors
+          constant.
+
+        - HC3 robust standard errors are reported because
+          the Breusch–Pagan test detected heteroscedasticity.
         """
     )
-
-    # ========================================================
-# OLS REGRESSION RESULTS
-# ========================================================
-
-st.subheader("OLS Regression Results")
-
-# Model summary metrics
-col1, col2, col3, col4 = st.columns(4)
-
-with col1:
-    st.metric("R²", f"{model.rsquared:.3f}")
-
-with col2:
-    st.metric("Adjusted R²", f"{model.rsquared_adj:.3f}")
-
-with col3:
-    st.metric("F-statistic", f"{model.fvalue:.2f}")
-
-with col4:
-    st.metric("Observations", int(model.nobs))
-
-
-# Coefficient table
-ols_table = pd.DataFrame({
-    "Coefficient": model.params,
-    "Std Error": model.bse,
-    "t-statistic": model.tvalues,
-    "P-value": model.pvalues,
-    "CI Lower": model.conf_int()[0],
-    "CI Upper": model.conf_int()[1]
-})
-
-st.markdown("### Coefficient Estimates")
-
-st.dataframe(
-    ols_table.style.format({
-        "Coefficient": "{:.2f}",
-        "Std Error": "{:.2f}",
-        "t-statistic": "{:.2f}",
-        "P-value": "{:.4e}",
-        "CI Lower": "{:.2f}",
-        "CI Upper": "{:.2f}"
-    }),
-    use_container_width=True
-)
     
 
